@@ -74,7 +74,7 @@ public class ReLinkerInstance {
     }
 
     /**
-     * Enables recursive library loading to resolve and load shared object -> shared object
+     * Enables recursive library loading to resolve and load shared object shared object
      * defined dependencies
      */
     public ReLinkerInstance recursively() {
@@ -165,6 +165,9 @@ public class ReLinkerInstance {
             log("%s (%s) was loaded normally!", library, version);
             return;
         } catch (final UnsatisfiedLinkError e) {
+            if (e.getMessage().contains(".so\" already opened by")) {
+                return;
+            }
             // :-(
             log("Loading the library normally failed: %s", Log.getStackTraceString(e));
         }
@@ -188,11 +191,15 @@ public class ReLinkerInstance {
                 try {
                     parser = new ElfParser(workaroundFile);
                     dependencies = parser.parseNeededDependencies();
-                }finally {
+                } finally {
                     parser.close();
                 }
                 for (final String dependency : dependencies) {
-                    loadLibrary(context, libraryLoader.unmapLibraryName(dependency));
+                    try {
+                        loadLibrary(context, libraryLoader.unmapLibraryName(dependency));
+                    } catch (Throwable throwable) {
+                        System.out.println("com.kwai.video relinker:" + Log.getStackTraceString(throwable));
+                    }
                 }
             }
         } catch (IOException ignored) {
